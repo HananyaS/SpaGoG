@@ -17,58 +17,12 @@ str2bool = lambda x: x.lower() in ["true", "t", 1]
 
 parser = argparse.ArgumentParser()
 
-# parser.add_argument("--model", type=str, help="gc / gnc / gc+nc")  # no default
-# parser.add_argument("--model", type=str, default="gc", help="gc / gnc / gc+nc")
-parser.add_argument("--model", type=str, default="gnc", help="gc / gnc / gc+nc")
-# parser.add_argument("--model", type=str, default="gc+nc", help="gc / gnc / gc+nc")
-# parser.add_argument("--model", type=str, default="nc", help="gc / gnc / gc+nc")
-
-# parser.add_argument("--dataset", type=str, default="diabetes")
-# parser.add_argument("--dataset", type=str, default="banknote)
-# parser.add_argument("--dataset", type=str, default="new_gdm")
-# parser.add_argument("--dataset", type=str, default="ma")
-# parser.add_argument("--dataset", type=str)  # no default
-# parser.add_argument("--dataset", type=str, default="Cora")
-# parser.add_argument("--dataset", type=str, default="CiteSeer")
-# parser.add_argument("--dataset", type=str, default="Pubmed")
-# parser.add_argument("--dataset", type=str, default="SSCFLOW-banknote")
 parser.add_argument("--dataset", type=str, default="SSCFLOW-iris")
-# parser.add_argument("--dataset", type=str, default="SSCFLOW-wifi")
-# parser.add_argument("--dataset", type=str, default="SSCFLOW-parkinson")
-# parser.add_argument("--dataset", type=str, default="FragmGAN-Spam")
-# parser.add_argument("--dataset", type=str, default="FragmGAN-Breast")
-# parser.add_argument("--dataset", type=str, default="YoramsData")
-# parser.add_argument("--dataset", type=str, default="Ecoli")
-# parser.add_argument("--dataset", type=str, default="Accent")
-
-
+parser.add_argument("--model", type=str, default="gc", help="gc / gnc / gc+nc")
 parser.add_argument("--use_existence_cols", type=str2bool, default=True)
-
-# parser.add_argument("--dist", type=str, default="euclidian")
 parser.add_argument("--dist", type=str, default="heur_dist")
-# parser.add_argument("--dist", type=str, default="cosine")
-# parser.add_argument("--dist", type=str, default="l1")
-# parser.add_argument("--dist", type=str, default="l_inf")
-
-# parser.add_argument("--k", type=str, default=2)
 parser.add_argument("--k", type=str, default=3)
-
-# parser.add_argument("--params", type=str, default=None)
-parser.add_argument("--params", type=str, default="optuna")
-
-parser.add_argument("--gc_pretrain", type=str2bool, default=True)
-# parser.add_argument("--gc_pretrain", type=str2bool, default=False)
-
-# parser.add_argument("--n_feats", type=int, default=None)
 parser.add_argument("--n_feats", type=int, default=30)
-
-parser.add_argument("--embedding_layer", type=str, default='first')
-# parser.add_argument("--embedding_layer", type=str, default='mid')
-# parser.add_argument("--embedding_layer", type=str2bool, default='one_before_last')
-
-# parser.add_argument("--clf_from", type=str, default='gc')
-parser.add_argument("--clf_from", type=str, default='nc')
-
 parser.add_argument("--verbose", type=int, default=1)
 
 args = parser.parse_args()
@@ -235,7 +189,8 @@ if __name__ == "__main__":
         params["gc_params"] = gc_params
 
     results = gog_model(params=params, train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
-                        val_Y=val_Y, model=args.model, evaluate_metrics=test_Y is not None)
+                        val_Y=val_Y, model=args.model, evaluate_metrics=test_Y is not None,
+                        feature_selection=args.n_feats, )
 
     if args.verbose > 0:
         _et = time.time()
