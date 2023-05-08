@@ -1,7 +1,0 @@
-{
-  "name": "Spam-20",
-  "data_path": "../",
-  "target_col": "class",
-  "scalable": false,
-  "missing_ratio": 20
-}
