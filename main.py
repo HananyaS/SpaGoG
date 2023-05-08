@@ -12,28 +12,6 @@ from experiments import run_gc, run_gnc, run_gc_nc, get_default_params_file, get
 
 warnings.filterwarnings("ignore")
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-str2bool = lambda x: x.lower() in ["true", "t", 1]
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument("--dataset", type=str, default="SSCFLOW-iris")
-parser.add_argument("--model", type=str, default="gc", help="gc / gnc / gc+nc")
-parser.add_argument("--use_existence_cols", type=str2bool, default=True)
-parser.add_argument("--dist", type=str, default="heur_dist")
-parser.add_argument("--k", type=str, default=3)
-parser.add_argument("--n_feats", type=int, default=30)
-parser.add_argument("--verbose", type=int, default=1)
-
-args = parser.parse_args()
-
-assert args.embedding_layer in ['one_before_last', 'first', 'mid']
-assert args.clf_from in ['gc', 'nc']
-assert args.model in ["gc", "gnc", "gc+nc"]
-assert args.verbose in [0, 1, 2]
-
-assert args.dataset is not None, "Please set a dataset"
-
 PROJECT_DIR = "."
 os.chdir(PROJECT_DIR)
 
@@ -52,10 +30,15 @@ def gog_model(
         edges: pd.DataFrame = None,
         probs: bool = False,
         to_numpy: bool = False,
+        verbosity: int = 0,
         **spec_params
 ):
     assert not evaluate_metrics or test_Y is not None, "Please provide test_Y to evaluate metrics"
     assert model in ["gc", "gnc", "gc+nc"], "Please provide a valid model {gc, gnc, gc+nc}}"
+    assert verbosity in [0, 1, 2], "Please provide a valid verbosity level {0, 1, 2}"
+
+    if verbosity > 0:
+        _st = time.time()
 
     is_graph = edges is not None
 
@@ -75,6 +58,11 @@ def gog_model(
         elif "gc_params" in params.keys() and k in params["gc_params"].keys():
             params["gc_params"][k] = v
 
+    assert "embedding_layer" not in params.keys() or params["embedding_layer"] in ['one_before_last', 'first', 'mid']
+    assert "gc_params" not in params.keys() or "embedding_layer" not in params["gc_params"].keys() or \
+           params["gc_params"]["embedding_layer"] in ['one_before_last', 'first', 'mid']
+    assert "clf_from" not in params.keys() or params["clf_from"] in ['gc', 'nc']
+
     tab_dataset = get_tab_data(
         train_X=train_X,
         train_Y=train_Y,
@@ -83,7 +71,7 @@ def gog_model(
         val_X=val_X,
         val_Y=val_Y,
         name=dataset_name,
-        use_existence_cols=params.get("use_existence_cols", args.use_existence_cols),
+        use_existence_cols=params["use_existence_cols"],
         feature_selection=feature_selection,
     )
 
@@ -100,18 +88,18 @@ def gog_model(
         tab_dataset,
         params,
         inter_sample_edges=inter_sample_edges,
-        verbose=args.verbose == 2,
+        verbose=verbosity == 2,
         evaluate_metrics=evaluate_metrics,
         probs=probs,
         to_numpy=to_numpy,
     )
 
-    if args.verbose == 2:
+    if verbosity == 2:
         print()
 
-    if args.verbose > 0:
+    if verbosity > 0:
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print(f"Results on {args.dataset.upper()} with {args.model.upper()}:")
+        print(f"Results on {dataset_name.upper() if dataset_name != '' else 'dataset'} with {model.upper()}:")
         print(f"\tN epochs:\t{res_cache['learning_epochs']}")
         print("\tAccuracy:")
         print(
@@ -150,6 +138,15 @@ def gog_model(
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
+    if verbosity > 0:
+        _et = time.time()
+        diff = _et - _st
+
+        _sec = np.round(diff % 60, 2)
+        _min = int(diff / 60)
+
+        print(f"All program last {_min} minutes and {_sec} seconds.")
+
     if evaluate_metrics:
         return y_test, res_cache
 
@@ -172,31 +169,6 @@ if __name__ == "__main__":
     val_Y = val_all[target_col]
     val_X = val_all.drop(target_col, axis=1)
 
-    if args.verbose > 0:
-        _st = time.time()
-
-    default_params_file = get_default_params_file(args.model)
-    args.params = default_params_file
-
-    with open(args.params, "r") as f:
-        params = json.load(f)
-
-    if args.model == "gnc" and args.gc_pretrain:
-        gc_default_params_file = get_default_params_file("gc")
-        with open(gc_default_params_file, "r") as f:
-            gc_params = json.load(f)
-
-        params["gc_params"] = gc_params
-
-    results = gog_model(params=params, train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
-                        val_Y=val_Y, model=args.model, evaluate_metrics=test_Y is not None,
-                        feature_selection=args.n_feats, )
-
-    if args.verbose > 0:
-        _et = time.time()
-        diff = _et - _st
-
-        _sec = np.round(diff % 60, 2)
-        _min = int(diff / 60)
-
-        print(f"All program last {_min} minutes and {_sec} seconds.")
+    results = gog_model(train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
+                        val_Y=val_Y, model="gc", evaluate_metrics=test_Y is not None,
+                        verbosity=1)
