@@ -2,7 +2,6 @@ import os
 import time
 import json
 import warnings
-import argparse
 
 import torch
 import pandas as pd
@@ -43,6 +42,9 @@ def gog_model(
     is_graph = edges is not None
 
     params = get_default_params_file(model)
+
+    with open(params, "r") as f:
+        params = json.load(f)
 
     if model == "gnc" and params.get("gc_pretrain", False):
         gc_default_params_file = get_default_params_file("gc")
@@ -154,11 +156,11 @@ def gog_model(
 
 
 if __name__ == "__main__":
-    train_all = pd.read_csv("data/PAPERS/SSCFLOW/Iris/processed/train.csv")
-    test_all = pd.read_csv("data/PAPERS/SSCFLOW/Iris/processed/test.csv")
-    val_all = pd.read_csv("data/PAPERS/SSCFLOW/Iris/processed/val.csv")
+    train_all = pd.read_csv("data/Tabular/Ecoli/processed/train.csv")
+    val_all = pd.read_csv("data/Tabular/Ecoli/processed/val.csv")
+    test_all = pd.read_csv("data/Tabular/Ecoli/processed/test.csv")
 
-    target_col = "tag"
+    target_col = "class"
 
     train_Y = train_all[target_col]
     train_X = train_all.drop(target_col, axis=1)
