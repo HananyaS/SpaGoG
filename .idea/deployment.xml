@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="shacharh@localhost:4002 password (2)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+    <option name="confirmBeforeUploading" value="false" />
+    <serverData>
+      <paths name="shacharh@localhost:4002 (15)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/dsi/shacharh/Projects/MissingVals" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="shacharh@localhost:4002 (3)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="" local="" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="shacharh@localhost:4002 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/dsi/shacharh/Projects/MissingVals4NNI" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="shacharh@localhost:4002 password (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/dsi/shacharh/Projects/MissingVals" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

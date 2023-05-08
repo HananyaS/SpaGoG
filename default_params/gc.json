@@ -1,0 +1,13 @@
+{
+  "distance": "heur_dist",
+  "k": 3,
+  "use_existence_cols": true,
+  "batch_size": 16,
+  "activation": "elu",
+  "lr": 0.06052007833,
+  "weight_decay": 0.04031554186,
+  "preweight": 20,
+  "layer_1": 10,
+  "layer_2": 7,
+  "dropout": 0
+}

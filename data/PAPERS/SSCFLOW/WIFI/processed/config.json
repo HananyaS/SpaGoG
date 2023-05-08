@@ -1,0 +1,7 @@
+{
+  "name": "WIFI-50",
+  "data_path": "../",
+  "target_col": "class",
+  "scalable": false,
+  "missing_ratio": 50
+}
