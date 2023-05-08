@@ -1,7 +1,0 @@
-{
-  "name": "PARKINSON-50",
-  "data_path": "../",
-  "target_col": "status",
-  "scalable": false,
-  "missing_ratio": 50
-}
