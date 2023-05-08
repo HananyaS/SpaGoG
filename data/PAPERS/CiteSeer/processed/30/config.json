@@ -1,1 +1,0 @@
-{"name": "CITESEER-30", "data_path": "../", "target_col": "class", "scalable": true, "missing_ratio": 30, "is_graph": true}
