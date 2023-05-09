@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: SpaGoG
+Version: 0.1
+Summary: Sparse data classification using Graph of Graphs models
+Home-page: https://github.com/HananyaS/SpaGoG
+Download-URL: https://github.com/HananyaS/SpaGoG/archive/refs/tags/v_0.1.tar.gz
+Author: Shachar Hananya
+Author-email: shacharhananya@gmail.com
+License: MIT
+Keywords: GoG
