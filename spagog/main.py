@@ -7,7 +7,8 @@ import torch
 import pandas as pd
 import numpy as np
 
-from experiments import run_gc, run_gnc, run_gc_nc, get_default_params_file, get_tab_data
+from .experiments import run_gc, run_gnc, run_gc_nc, get_default_params_file, get_tab_data
+from .default_params.load_params import load_params
 
 warnings.filterwarnings("ignore")
 
@@ -41,15 +42,10 @@ def gog_model(
 
     is_graph = edges is not None
 
-    params = get_default_params_file(model)
-
-    with open(params, "r") as f:
-        params = json.load(f)
+    params = load_params(model)
 
     if model == "gnc" and params.get("gc_pretrain", False):
-        gc_default_params_file = get_default_params_file("gc")
-        with open(gc_default_params_file, "r") as f:
-            gc_params = json.load(f)
+        gc_params = load_params("gc")
 
         params["gc_params"] = gc_params
 

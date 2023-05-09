@@ -2,10 +2,10 @@ import torch
 import numpy as np
 import pandas as pd
 
-from datasets.tabDataPair import TabDataPair
+from ...datasets.tabDataPair import TabDataPair
 
-from utils.gfp import GFP
-from utils.knn import KNN
+from ..gfp import GFP
+from ..knn import KNN
 
 from copy import deepcopy
 from typing import Union, Type

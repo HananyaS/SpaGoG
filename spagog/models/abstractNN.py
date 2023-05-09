@@ -15,7 +15,7 @@ from sklearn.metrics import roc_auc_score
 
 from .abstractModel import AbstractModel
 
-from utils.metrics.metrics import find_best_metrics_bin, find_best_metrics_multi
+from ..utils.metrics.metrics import find_best_metrics_bin, find_best_metrics_multi
 
 
 class AbstractNN(nn.Module, AbstractModel):
