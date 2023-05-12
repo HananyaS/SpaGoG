@@ -346,8 +346,8 @@ def run_gc_nc(
     return y_test, cache
 
 
-def get_default_params_file(model):
-    return f"default_params/{model}.json"
+# def get_default_params_file(model):
+#     return f"default_params/{model}.json"
 
 
 def get_tab_data(
