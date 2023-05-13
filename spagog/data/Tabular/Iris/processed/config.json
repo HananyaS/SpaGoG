@@ -1,0 +1,7 @@
+{
+  "name": "IRIS-50",
+  "data_path": "../",
+  "target_col": "tag",
+  "scalable": false,
+  "missing_ratio": 50
+}
