@@ -1,14 +1,13 @@
 import os
 import time
-import json
 import warnings
 
 import torch
 import pandas as pd
 import numpy as np
 
-from .experiments import run_gc, run_gnc, run_gc_nc, get_tab_data
-from .default_params.load_params import load_params
+from experiments import run_gc, run_gnc, run_gc_nc, get_tab_data
+from default_params.load_params import load_params
 
 warnings.filterwarnings("ignore")
 
@@ -152,7 +151,6 @@ def gog_model(
 
 
 if __name__ == "__main__":
-    print("Works")
     train_all = pd.read_csv("data/Tabular/Ecoli/processed/train.csv")
     val_all = pd.read_csv("data/Tabular/Ecoli/processed/val.csv")
     test_all = pd.read_csv("data/Tabular/Ecoli/processed/test.csv")

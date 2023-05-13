@@ -1,12 +1,12 @@
 import pandas as pd
 import torch
 
-from .datasets.tabDataset import TabDataset
-from .datasets.graphsDataset import GraphsDataset
+from datasets.tabDataset import TabDataset
+from datasets.graphsDataset import GraphsDataset
 
-from .models.graphClassification import ValuesAndGraphStructure as GC
-from .models.graphNodeClassification import GraphNodeClassification as GNC
-from .models.nodeClassification import NodeClassification
+from models.graphClassification import ValuesAndGraphStructure as GC
+from models.graphNodeClassification import GraphNodeClassification as GNC
+from models.nodeClassification import NodeClassification
 
 PROJECT_DIR = "."
 

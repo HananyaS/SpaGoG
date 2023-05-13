@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 import torch
-from ..datasets.tabDataPair import TabDataPair
+from datasets.tabDataPair import TabDataPair
 
 from copy import deepcopy
 
