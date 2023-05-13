@@ -1,4 +1,4 @@
-pandas
-torch
-torch-geometric
-matplotlib
+pandas==2.0.1
+torch==2.0.1
+torch-geometric==2.3.1
+matplotlib==3.7.1
