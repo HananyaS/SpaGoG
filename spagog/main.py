@@ -1,5 +1,6 @@
 import os
 import time
+import argparse
 import warnings
 
 import torch
@@ -8,11 +9,19 @@ import numpy as np
 
 from experiments import run_gc, run_gnc, run_gc_nc, get_tab_data
 from default_params.load_params import load_params
+from data.load_data import load_data
 
 warnings.filterwarnings("ignore")
 
 PROJECT_DIR = "."
 os.chdir(PROJECT_DIR)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", type=str)
+parser.add_argument("--dataset", type=str)
+parser.add_argument("--feature_selection", type=int, default=None)
+parser.add_argument("--verbosity", type=int, default=1)
+args = parser.parse_args()
 
 
 def gog_model(
@@ -151,21 +160,24 @@ def gog_model(
 
 
 if __name__ == "__main__":
-    train_all = pd.read_csv("data/Tabular/Ecoli/processed/train.csv")
-    val_all = pd.read_csv("data/Tabular/Ecoli/processed/val.csv")
-    test_all = pd.read_csv("data/Tabular/Ecoli/processed/test.csv")
+    data = load_data(args.dataset)
 
-    target_col = "class"
+    if data[-1] == "tabular":
+        train, val, test, target_col = data[:-1]
+        edges = None
 
-    train_Y = train_all[target_col]
-    train_X = train_all.drop(target_col, axis=1)
+    else:
+        train, val, test, edges, target_col = data[:-1]
 
-    test_Y = test_all[target_col]
-    test_X = test_all.drop(target_col, axis=1)
+    train_Y = train[target_col]
+    train_X = train.drop(target_col, axis=1)
 
-    val_Y = val_all[target_col]
-    val_X = val_all.drop(target_col, axis=1)
+    test_Y = test[target_col]
+    test_X = test.drop(target_col, axis=1)
+
+    val_Y = val[target_col]
+    val_X = val.drop(target_col, axis=1)
 
     results = gog_model(train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
-                        val_Y=val_Y, model="gc", evaluate_metrics=test_Y is not None,
-                        verbosity=1)
+                        val_Y=val_Y, model=args.model, evaluate_metrics=test_Y is not None,
+                        verbosity=args.verbosity, feature_selection=args.feature_selection, edges=edges)
