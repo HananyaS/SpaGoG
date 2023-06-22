@@ -6,9 +6,9 @@ import torch
 from torch import nn
 from torch import optim
 
-from ..datasets.graphsDataset import GraphsDataset
+from datasets.graphsDataset import GraphsDataset
 
-from ..utils.metrics.metrics import find_best_metrics_bin
+from utils.metrics.metrics import find_best_metrics_bin, find_best_metrics_multi
 
 MODEL = "gnc"
 PROJECT_DIR = "."
@@ -23,7 +23,7 @@ from typing import Dict
 from sklearn.metrics import roc_auc_score
 from torch.nn.functional import one_hot
 
-from ..utils.metrics.metrics import find_best_metrics_multi
+# from utils.metrics.metrics import find_best_metrics_multi
 
 
 class GraphNodeClassification(nn.Module, AbstractModel):

@@ -4,7 +4,7 @@ from .graphDataPair import GraphDataPair
 import numpy as np
 from typing import List, Union, Tuple
 
-from ..utils.data.tab2graph import tab2graphs
+from utils.data.tab2graph import tab2graphs
 from torch.utils.data import Dataset, DataLoader
 
 

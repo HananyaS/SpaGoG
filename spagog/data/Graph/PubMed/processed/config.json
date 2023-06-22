@@ -1,0 +1,8 @@
+{
+  "name": "PUBMED-99",
+  "data_path": "../",
+  "target_col": "class",
+  "scalable": true,
+  "missing_ratio": 0.99,
+  "is_graph": true
+}
