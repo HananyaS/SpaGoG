@@ -22,7 +22,7 @@ parser.add_argument("--model", type=str)
 parser.add_argument("--dataset", type=str)
 parser.add_argument("--feature_selection", type=int, default=None)
 parser.add_argument("--verbosity", type=int, default=1)
-parser.add_argument("--kfolds", type=int, default=10)
+parser.add_argument("--kfolds", type=int, default=None)
 
 args = parser.parse_args()
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     else:
         train, val, test, edges, target_col = data[:-1]
 
-    if args.kfolds is not None:
+    if args.kfolds is not None and args.kfolds > 1:
         all_data = pd.concat([train, val, test])
         splits_idx = get_folds(all_data, target_col, args.kfolds)
 
