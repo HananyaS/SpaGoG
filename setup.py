@@ -21,4 +21,6 @@ setup(
         'License :: OSI Approved :: MIT License',  # Again, pick a license
         'Programming Language :: Python :: 3.8',
     ],
+    # add the json files that appear in default_params folder
+    package_data={'spagog': ['default_params/*.json']},
 )
