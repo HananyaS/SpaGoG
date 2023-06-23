@@ -4,10 +4,10 @@ import torch
 import numpy as np
 from typing import List, Union
 
-from datasets.graphsDataPair import GraphsDataPair
-from datasets.tabDataset import TabDataset
+from .graphsDataPair import GraphsDataPair
+from .tabDataset import TabDataset
 
-from utils.data.tab2graph import tab2graphs
+from ..utils.data.tab2graph import tab2graphs
 
 from operator import itemgetter
 

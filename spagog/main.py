@@ -1,43 +1,28 @@
 import os
 import time
-import argparse
+import json
 import warnings
 
 import torch
 import pandas as pd
 import numpy as np
 
-from experiments import run_gc, run_gnc, run_gc_nc, get_tab_data
-from default_params.load_params import load_params
-from data.load_data import load_data, split_X_y, get_folds
+from .experiments import run_gc, run_gnc, run_gc_nc, get_default_params_file, get_tab_data
 
 warnings.filterwarnings("ignore")
 
 PROJECT_DIR = "."
 os.chdir(PROJECT_DIR)
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument("--model", type=str)
-parser.add_argument("--dataset", type=str)
-parser.add_argument("--feature_selection", type=int, default=None)
-parser.add_argument("--verbosity", type=int, default=1)
-parser.add_argument("--kfolds", type=int, default=None)
-
-args = parser.parse_args()
-
-assert args.kfolds is None or args.kfolds > 1
-args.model = args.model.lower()
-
 
 def gog_model(
         model: str,
         train_X: pd.DataFrame,
-        train_y: pd.DataFrame,
+        train_Y: pd.DataFrame,
         test_X: pd.DataFrame,
-        test_y: pd.DataFrame = None,
+        test_Y: pd.DataFrame = None,
         val_X: pd.DataFrame = None,
-        val_y: pd.DataFrame = None,
+        val_Y: pd.DataFrame = None,
         evaluate_metrics: bool = True,
         dataset_name: str = "",
         feature_selection: int = 100,
@@ -47,7 +32,7 @@ def gog_model(
         verbosity: int = 0,
         **spec_params
 ):
-    assert not evaluate_metrics or test_y is not None, "Please provide test_Y to evaluate metrics"
+    assert not evaluate_metrics or test_Y is not None, "Please provide test_Y to evaluate metrics"
     assert model in ["gc", "gnc", "gc+nc"], "Please provide a valid model {gc, gnc, gc+nc}}"
     assert verbosity in [0, 1, 2], "Please provide a valid verbosity level {0, 1, 2}"
 
@@ -56,10 +41,15 @@ def gog_model(
 
     is_graph = edges is not None
 
-    params = load_params(model)
+    params = get_default_params_file(model)
+
+    with open(params, "r") as f:
+        params = json.load(f)
 
     if model == "gnc" and params.get("gc_pretrain", False):
-        gc_params = load_params("gc")
+        gc_default_params_file = get_default_params_file("gc")
+        with open(gc_default_params_file, "r") as f:
+            gc_params = json.load(f)
 
         params["gc_params"] = gc_params
 
@@ -77,11 +67,11 @@ def gog_model(
 
     tab_dataset = get_tab_data(
         train_X=train_X,
-        train_Y=train_y,
+        train_Y=train_Y,
         test_X=test_X,
-        test_Y=test_y,
+        test_Y=test_Y,
         val_X=val_X,
-        val_Y=val_y,
+        val_Y=val_Y,
         name=dataset_name,
         use_existence_cols=params["use_existence_cols"],
         feature_selection=feature_selection,
@@ -109,43 +99,43 @@ def gog_model(
     if verbosity == 2:
         print()
 
-    if verbosity > 0 and args.kfolds is None:
+    if verbosity > 0:
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print(f"Results on {dataset_name.upper() if dataset_name != '' else 'dataset'} with {model.upper()}:")
-
+        print(f"\tN epochs:\t{res_cache['learning_epochs']}")
         print("\tAccuracy:")
         print(
-            f"\t\tThreshold:\t{round(res_cache['Acc Threshold'], 3)}\n"
-            f"\t\tTrain:\t{round(res_cache['Train Acc'], 3)}\n"
-            f"\t\tVal:\t{round(res_cache['Val Acc'], 3)}"
+            f"\t\tThreshold:\t{res_cache['Acc Threshold']}\n"
+            f"\t\tTrain:\t{res_cache['Train Acc']}\n"
+            f"\t\tVal:\t{res_cache['Val Acc']}"
         )
 
         if evaluate_metrics:
             print(
-                f"\t\tTest:\t{round(res_cache['Test Acc'], 3)}"
+                f"\t\tTest:\t{res_cache['Test Acc']}"
             )
 
         print("\tF1:")
         print(
-            f"\t\tThreshold:\t{round(res_cache['F1 Threshold'], 3)}\n"
-            f"\t\tTrain:\t{round(res_cache['Train F1'], 3)}\n"
-            f"\t\tVal:\t{round(res_cache['Val F1'], 3)}"
+            f"\t\tThreshold:\t{res_cache['F1 Threshold']}\n"
+            f"\t\tTrain:\t{res_cache['Train F1']}\n"
+            f"\t\tVal:\t{res_cache['Val F1']}"
         )
 
         if evaluate_metrics:
             print(
-                f"\t\tTest:\t{round(res_cache['Test F1'], 3)}"
+                f"\t\tTest:\t{res_cache['Test F1']}"
             )
 
         print("\tAUC:")
         print(
-            f"\t\tTrain:\t{round(res_cache['Train AUC'], 3)}\n"
-            f"\t\tVal:\t{round(res_cache['Val AUC'], 3)}"
+            f"\t\tTrain:\t{res_cache['Train AUC']}\n"
+            f"\t\tVal:\t{res_cache['Val AUC']}"
         )
 
         if evaluate_metrics:
             print(
-                f"\t\tTest:\t{round(res_cache['Test AUC'], 3)}"
+                f"\t\tTest:\t{res_cache['Test AUC']}"
             )
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -166,76 +156,21 @@ def gog_model(
 
 
 if __name__ == "__main__":
-    data = load_data(args.dataset)
+    train_all = pd.read_csv("data/Tabular/Ecoli/processed/train.csv")
+    val_all = pd.read_csv("data/Tabular/Ecoli/processed/val.csv")
+    test_all = pd.read_csv("data/Tabular/Ecoli/processed/test.csv")
 
-    if data[-1] == "tabular":
-        train, val, test, target_col = data[:-1]
-        edges = None
+    target_col = "class"
 
-    else:
-        train, val, test, edges, target_col = data[:-1]
+    train_Y = train_all[target_col]
+    train_X = train_all.drop(target_col, axis=1)
 
-    if args.kfolds is not None and args.kfolds > 1:
-        all_data = pd.concat([train, val, test])
-        splits_idx = get_folds(all_data, target_col, args.kfolds)
+    test_Y = test_all[target_col]
+    test_X = test_all.drop(target_col, axis=1)
 
-        for fold, (train_idx, test_idx, val_idx) in enumerate(splits_idx):
-            if args.verbosity > 0:
-                print(f"Running fold {fold + 1} out of {args.kfolds}...")
+    val_Y = val_all[target_col]
+    val_X = val_all.drop(target_col, axis=1)
 
-            train = all_data.iloc[train_idx]
-            test = all_data.iloc[test_idx]
-            val = all_data.iloc[val_idx]
-
-            train_X, train_Y = split_X_y(train, target_col)
-            test_X, test_y = split_X_y(test, target_col)
-            val_X, val_y = split_X_y(val, target_col)
-
-            _, fold_results = gog_model(train_X=train_X, train_y=train_Y, test_X=test_X, test_y=test_y, val_X=val_X,
-                                        val_y=val_y, model=args.model, evaluate_metrics=test_y is not None,
-                                        verbosity=args.verbosity, feature_selection=args.feature_selection, edges=edges)
-
-            if fold == 0:
-                results_all_folds = {k: [v] for k, v in fold_results.items()}
-
-            else:
-                for k, v in fold_results.items():
-                    results_all_folds[k].append(v)
-
-        for k, v in results_all_folds.items():
-            results_all_folds[k] = np.mean(v), np.std(v)
-
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
-        print(
-            f"Results on {args.dataset.upper() if args.dataset != '' else 'dataset'} with {args.model.upper()} ({args.kfolds} cross-validation):")
-
-        print("\tAccuracy:")
-        print(
-            f"\t\tTrain:\t{round(results_all_folds['Train Acc'][0], 3)} ± {round(results_all_folds['Train Acc'][1], 3)}\n"
-            f"\t\tVal:\t{round(results_all_folds['Val Acc'][0], 3)} ± {round(results_all_folds['Val Acc'][1], 3)}\n"
-            f"\t\tTest:\t{round(results_all_folds['Test Acc'][0], 3)} ± {round(results_all_folds['Test Acc'][1], 3)}"
-        )
-
-        print("\tF1:")
-        print(
-            f"\t\tTrain:\t{round(results_all_folds['Train F1'][0], 3)} ± {round(results_all_folds['Train F1'][1], 3)}\n"
-            f"\t\tVal:\t{round(results_all_folds['Val F1'][0], 3)} ± {round(results_all_folds['Val F1'][1], 3)}\n"
-            f"\t\tTest:\t{round(results_all_folds['Test F1'][0], 3)} ± {round(results_all_folds['Test F1'][1], 3)}"
-        )
-
-        print("\tAUC:")
-        print(
-            f"\t\tTrain:\t{round(results_all_folds['Train AUC'][0], 3)} ± {round(results_all_folds['Train AUC'][1], 3)}\n"
-            f"\t\tVal:\t{round(results_all_folds['Val AUC'][0], 3)} ± {round(results_all_folds['Val AUC'][1], 3)}\n"
-            f"\t\tTest:\t{round(results_all_folds['Test AUC'][0], 3)} ± {round(results_all_folds['Test AUC'][1], 3)}"
-        )
-
-    else:
-        train_X, train_Y = split_X_y(train, target_col)
-        test_X, test_y = split_X_y(test, target_col)
-        val_X, val_y = split_X_y(val, target_col)
-
-        results = gog_model(train_X=train_X, train_y=train_Y, test_X=test_X, test_y=test_y, val_X=val_X,
-                            val_y=val_y, model=args.model, evaluate_metrics=test_y is not None,
-                            verbosity=args.verbosity, feature_selection=args.feature_selection, edges=edges)
+    results = gog_model(train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
+                        val_Y=val_Y, model="gc", evaluate_metrics=test_Y is not None,
+                        verbosity=1)

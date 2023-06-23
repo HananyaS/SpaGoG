@@ -4,7 +4,7 @@ from torch.nn.functional import one_hot
 from .abstractNN import AbstractNN
 from typing import Union, Type, List
 from torch.utils.data import DataLoader
-from datasets.graphsDataset import GraphsDataset
+from ..datasets.graphsDataset import GraphsDataset
 
 
 class ValuesAndGraphStructure(AbstractNN):

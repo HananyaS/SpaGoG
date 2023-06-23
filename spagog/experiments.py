@@ -1,12 +1,12 @@
 import pandas as pd
 import torch
 
-from datasets.tabDataset import TabDataset
-from datasets.graphsDataset import GraphsDataset
+from .datasets.tabDataset import TabDataset
+from .datasets.graphsDataset import GraphsDataset
 
-from models.graphClassification import ValuesAndGraphStructure as GC
-from models.graphNodeClassification import GraphNodeClassification as GNC
-from models.nodeClassification import NodeClassification
+from .models.graphClassification import ValuesAndGraphStructure as GC
+from .models.graphNodeClassification import GraphNodeClassification as GNC
+from .models.nodeClassification import NodeClassification
 
 PROJECT_DIR = "."
 
@@ -169,7 +169,7 @@ def run_gnc(
         train_mask,
         val_mask,
         test_mask,
-        n_epochs=600,
+        n_epochs=10000,
         gc_lr=params["gc_lr"],
         nc_lr=params["nc_lr"],
         gc_weight_decay=params["gc_weight_decay"],
@@ -181,16 +181,14 @@ def run_gnc(
         clf_from=params["clf_from"]  # clf_from
     )
 
-    y_test = model.predict(all_graphs_loader, inter_samples_edges.T, test_mask, clf_from=params["clf_from"],
-                           probs=False,
+    y_test = model.predict(all_graphs_loader, inter_samples_edges.T, test_mask, clf_from=params["clf_from"], probs=False,
                            to_numpy=to_numpy)
 
     if evaluate_metrics and verbose == 1:
         print(f"Test accuracy: {(test_loader.dataset.gdp.Y.flatten() == y_test).float().mean():.4f}")
 
     if probs:
-        y_test = model.predict(all_graphs_loader, inter_samples_edges.T, test_mask, clf_from=params["clf_from"],
-                               probs=True,
+        y_test = model.predict(all_graphs_loader, inter_samples_edges.T, test_mask, clf_from=params["clf_from"], probs=True,
                                to_numpy=to_numpy)
 
     return y_test, cache
@@ -347,6 +345,9 @@ def run_gc_nc(
 
     return y_test, cache
 
+
+def get_default_params_file(model):
+    return f"default_params/{model}.json"
 
 
 def get_tab_data(

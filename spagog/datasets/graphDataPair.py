@@ -1,17 +1,12 @@
 import torch
 import numpy as np
-
-from datasets.tabDataPair import TabDataPair
+from .tabDataPair import TabDataPair
 from typing import Type, Union
 from torch.utils.data import DataLoader, Dataset
 
 from copy import deepcopy
 
-import sys
-
-sys.path.insert(1, "../")
-
-from utils.data.tab2graph import fill_data_gfp
+from ..utils.data.tab2graph import fill_data_gfp
 
 
 class GraphDataPair(TabDataPair):

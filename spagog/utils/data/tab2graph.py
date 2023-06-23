@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import pandas as pd
 
-from datasets.tabDataPair import TabDataPair
+from ...datasets.tabDataPair import TabDataPair
 
 from ..gfp import GFP
 from ..knn import KNN
