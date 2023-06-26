@@ -1,3 +1,4 @@
 pandas
 torch
-torch_geometric
+torch-geometric
+matplotlib
