@@ -1,4 +1,0 @@
-pandas
-torch
-torch-geometric
-matplotlib
