@@ -31,7 +31,7 @@ Here are all the arguments accepted by ```spagog.main.gog_model```:
 
 * _**model: str**_
 
-The SpaGoG model to run. Options: ["gc", "gnc", "gc+nc"].
+The SpaGoG model to run. Options: ```["gc", "gnc", "gc+nc"]```.
 * _**train_X: pandas.DataFrame**_
 
 The features of the training set.
@@ -79,4 +79,8 @@ Whether to return soft labels for the test set predicrtions. Default: ```False``
 * _**to_numpy: bool**_
 
 Whether to return the test set predicrtions as a ```numpy.array```. If set to ```False```, the predictions type will be ```torch.Tensor```. Default: ```False```.
+
+* _**verbosity: int**_
+
+Verbosity level of the running process. Set ```0``` for no output, ```1``` for evaluation metrics and timing report, and ```2``` to track the full learning process. Options: ```[0, 1, 2]```. Defuault: ```0```.
 
