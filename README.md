@@ -1,4 +1,4 @@
 # SpaGoG
 An implementation of "SpaGoG: Graph of Graphs to classify tabular data with large fractions of missing data".
 
-<image src="/figures/GoG Paper - Fig 2.pdf">
+<img src="figures/scheme_fig.pdf" alt="Scheme Figure" width="500">
