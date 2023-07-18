@@ -21,13 +21,13 @@ pip install spagog
 Given train (both ```train_X```, ```test_y```) and test (at least ```test_X```) sets of type ```pandas.DataFrame```, SpaGoG can be executed, for example, using the following command:
 
 ```python
-from spagog.main import gog_model
+from spagog.gog_model import gog_model
 
 test_y = gog_model(train_X=train_X, train_Y=train_Y, test_X=test_X, model="gc", verbosity=1, to_numpy=False, evaluate_metrics=False)
 ```
 
 ## Argument List
-Here are all the arguments accepted by ```spagog.main.gog_model```:
+Here are all the arguments accepted by ```spagog.gog_model.gog_model```:
 
 * _**model: str**_
 
