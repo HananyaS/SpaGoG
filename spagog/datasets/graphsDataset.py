@@ -39,12 +39,18 @@ class GraphsDataset:
             self.test = test
             self.test.denormalize(inplace=True)
 
+        else:
+            self.test = None
+
         if self.val_exists:
             assert (
                 val.num_features == train.num_features
             ), "Validation doesn't have the same number of features as in train"
             self.val = val
             self.val.denormalize(inplace=True)
+
+        else:
+            self.val = None
 
         if normalize:
             self.zscore()
@@ -166,9 +172,9 @@ class GraphsDataset:
                 train_X_attributes=list(itemgetter(*train_mask)(all_imputed_X)),
                 train_edges=list(itemgetter(*train_mask)(all_intra_edges)) if calc_intra_edges else None,
                 train_Y=list(all_data_Y[train_mask]),
-                val_X_attributes=list(itemgetter(*val_mask)(all_imputed_X)),
-                val_edges=list(itemgetter(*val_mask)(all_intra_edges)) if calc_intra_edges else None,
-                val_Y=list(all_data_Y[val_mask]),
+                val_X_attributes=None if val_mask is None else list(itemgetter(*val_mask)(all_imputed_X)),
+                val_edges=None if val_mask is None else (list(itemgetter(*val_mask)(all_intra_edges)) if calc_intra_edges else None),
+                val_Y=None if val_mask is None else list(all_data_Y[val_mask]),
                 test_X_attributes=list(itemgetter(*test_mask)(all_imputed_X)),
                 test_edges=list(itemgetter(*test_mask)(all_intra_edges)) if calc_intra_edges else None,
                 test_Y=list(all_data_Y[test_mask]) if test_y_given else None,
@@ -267,9 +273,9 @@ class GraphsDataset:
                 train_X_attributes=list(itemgetter(*train_mask)(all_imputed_X)),
                 train_edges=list(itemgetter(*train_mask)(all_intra_edges)),
                 train_Y=list(all_data_Y[train_mask]),
-                val_X_attributes=list(itemgetter(*val_mask)(all_imputed_X)),
-                val_edges=list(itemgetter(*val_mask)(all_intra_edges)),
-                val_Y=list(all_data_Y[val_mask]),
+                val_X_attributes=None if val_mask is None else list(itemgetter(*val_mask)(all_imputed_X)),
+                val_edges=None if val_mask is None else list(itemgetter(*val_mask)(all_intra_edges)),
+                val_Y=None if val_mask is None else list(all_data_Y[val_mask]),
                 test_X_attributes=list(itemgetter(*test_mask)(all_imputed_X)),
                 test_edges=list(itemgetter(*test_mask)(all_intra_edges)),
                 test_Y=list(all_data_Y[test_mask]) if test_y_given else None,
@@ -329,16 +335,23 @@ class GraphsDataset:
         return train
 
     def get_test_data(self, as_loader: bool = False, **kwargs):
-        assert self.test_exists, "Test data is not available"
+        # assert self.test_exists, "Test data is not available"
+
+        if not self.test_exists:
+            return None
 
         test = self.test
+
         if as_loader:
             test = test.to_loader(**kwargs)
 
         return test
 
     def get_val_data(self, as_loader: bool = False, **kwargs):
-        assert self.val_exists, "Validation data is not available"
+        # assert self.val_exists, "Validation data is not available"
+
+        if not self.val_exists:
+            return None
 
         val = self.val
 
@@ -353,7 +366,10 @@ class GraphsDataset:
         test_data = self.get_test_data(as_loader=False)
 
         all_data = copy.deepcopy(train_data)
-        all_data = all_data + val_data + test_data
+        if val_data is not None:
+            all_data = all_data + val_data + test_data
+        else:
+            all_data = all_data + test_data
         all_data.name = "all_data_graphs"
 
         return all_data.to_loader(**kwargs)
