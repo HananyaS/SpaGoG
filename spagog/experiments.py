@@ -33,11 +33,15 @@ def run_gc(
         calc_intra_edges=True,
     )
 
-    train_loader = graphs_dataset.train.to_loader(batch_size=params["batch_size"])
-    val_loader = graphs_dataset.val.to_loader(batch_size=params["batch_size"])
-    test_loader = graphs_dataset.test.to_loader(batch_size=params["batch_size"])
+    train_loader = graphs_dataset.get_train_data(as_loader=True, batch_size=params["batch_size"])
+    val_loader = graphs_dataset.get_val_data(as_loader=True, batch_size=params["batch_size"])
+    test_loader = graphs_dataset.get_test_data(as_loader=True, batch_size=params["batch_size"])
+
+    # val_loader = graphs_dataset.val.to_loader(batch_size=params["batch_size"])
+    # test_loader = graphs_dataset.test.to_loader(batch_size=params["batch_size"])
 
     RECEIVED_PARAMS = {
+
         "preweight": params["preweight"],
         "layer_1": params["layer_1"],
         "layer_2": params["layer_2"],
@@ -112,11 +116,9 @@ def run_gnc(
     if params["gc_pretrain"]:
         gc_params = params["gc_params"]
 
-        train_loader = graphs_dataset.train.to_loader(
-            batch_size=gc_params["batch_size"]
-        )
-        val_loader = graphs_dataset.val.to_loader(batch_size=gc_params["batch_size"])
-        test_loader = graphs_dataset.test.to_loader(batch_size=gc_params["batch_size"])
+        train_loader = graphs_dataset.get_train_data(as_loader=True, batch_size=gc_params["batch_size"])
+        val_loader = graphs_dataset.get_val_data(as_loader=True, batch_size=gc_params["batch_size"])
+        test_loader = graphs_dataset.get_test_data(as_loader=True, batch_size=gc_params["batch_size"])
 
         RECEIVED_PARAMS = {
             "preweight": gc_params["preweight"],
@@ -204,7 +206,7 @@ def run_gnc(
 
     if evaluate_metrics and verbose == 1:
         print(
-            f"Test accuracy: {(test_loader.dataset.gdp.Y.flatten() == y_test).float().mean():.4f}"
+            f"Test accuracy: {(all_graphs_loader.dataset.gdp.Y.flatten()[test_mask] == y_test).float().mean():.4f}"
         )
 
     if probs:
@@ -243,8 +245,8 @@ def run_gc_nc(
         batch_size=params["batch_size"]
     )
 
-    val_graphs_loader = graphs_dataset.val.to_loader(batch_size=params["batch_size"])
-    test_graphs_loader = graphs_dataset.test.to_loader(batch_size=params["batch_size"])
+    val_graphs_loader = graphs_dataset.get_val_data(as_loader=True, batch_size=params["batch_size"])
+    test_graphs_loader = graphs_dataset.get_test_data(as_loader=True, batch_size=params["batch_size"])
 
     GC_RECEIVED_PARAMS = {
         "preweight": params["gc_preweight"],
@@ -276,6 +278,9 @@ def run_gc_nc(
     )
 
     def extract_embeddings(graphs_loader):
+        if graphs_loader is None:
+            return None
+
         first_batch = True
 
         for graphs_data in graphs_loader:
@@ -326,28 +331,48 @@ def run_gc_nc(
 
     inter_samples_edges_train = torch.LongTensor(inter_samples_edges_train)
 
-    all_embeddings = torch.cat([train_embeddings, val_embeddings, test_embeddings])
+    if val_embeddings is None:
+        all_embeddings = torch.cat([train_embeddings, test_embeddings])
 
-    train_graph = [
-        (
-            (train_embeddings, inter_samples_edges_train.T, masks[0]),
-            tab_dataset.train.Y,
-        )
-    ]
+        train_graph = [
+            (
+                (train_embeddings, inter_samples_edges_train.T, masks[0]),
+                tab_dataset.train.Y,
+            )
+        ]
 
-    val_graph = [
-        (
-            (all_embeddings, inter_sample_edges.T, masks[1]),
-            tab_dataset.val.Y,
-        )
-    ]
+        test_graph = [
+            (
+                (all_embeddings, inter_sample_edges.T, masks[2]),
+                tab_dataset.test.Y,
+            )
+        ]
 
-    test_graph = [
-        (
-            (all_embeddings, inter_sample_edges.T, masks[2]),
-            tab_dataset.test.Y,
-        )
-    ]
+        val_graph = None
+
+    else:
+        all_embeddings = torch.cat([train_embeddings, val_embeddings, test_embeddings])
+
+        train_graph = [
+            (
+                (train_embeddings, inter_samples_edges_train.T, masks[0]),
+                tab_dataset.train.Y,
+            )
+        ]
+
+        val_graph = [
+            (
+                (all_embeddings, inter_sample_edges.T, masks[1]),
+                tab_dataset.val.Y,
+            )
+        ]
+
+        test_graph = [
+            (
+                (all_embeddings, inter_sample_edges.T, masks[2]),
+                tab_dataset.test.Y,
+            )
+        ]
 
     nc_early_stopping = params.get("nc_early_stopping", 30)
 
