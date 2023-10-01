@@ -22,7 +22,8 @@ class ValuesAndGraphStructure(AbstractNN):
             num_classes: int = 1,
             input_example: Union[DataLoader, GraphsDataset] = None,
             init_weights="xavier_normal",
-            embedding_layer: str = 'one_before_last'
+            embedding_layer: str = 'one_before_last',
+            n_gcn_layers: int = 1,
     ):
         super(ValuesAndGraphStructure, self).__init__()
 
@@ -43,9 +44,13 @@ class ValuesAndGraphStructure(AbstractNN):
         self.num_classes = max([self.num_classes, 2])
         self.RECEIVED_PARAMS = RECEIVED_PARAMS
 
-        self.pre_weighting = nn.Linear(1, int(self.RECEIVED_PARAMS["preweight"])).to(
+        self.first_pre_weighting = nn.Linear(1, int(self.RECEIVED_PARAMS["preweight"])).to(
             self.device
         )
+
+        self.next_pre_weighting = [nn.Linear(
+            int(self.RECEIVED_PARAMS["preweight"]), int(self.RECEIVED_PARAMS["preweight"])
+        ).to(self.device) for _ in range(n_gcn_layers - 1)]
 
         self.fc1 = nn.Linear(
             int(self.RECEIVED_PARAMS["preweight"]) * self.nodes_number,
@@ -77,9 +82,13 @@ class ValuesAndGraphStructure(AbstractNN):
         if init_weights is not None:
             self.init_weights(init_weights)
 
-        self.gcn_layer = nn.Sequential(
-            self.pre_weighting, self.activation_func_dict[self.activation_func]
+        self.first_gcn_layer = nn.Sequential(
+            self.first_pre_weighting, self.activation_func_dict[self.activation_func]
         ).to(self.device)
+
+        self.next_gcn_layers = nn.ModuleList([nn.Sequential(
+            next_pre_weighting, self.activation_func_dict[self.activation_func]
+        ).to(self.device) for next_pre_weighting in self.next_pre_weighting])
 
         self.embedding_layer = embedding_layer
 
@@ -110,7 +119,11 @@ class ValuesAndGraphStructure(AbstractNN):
             -1
         )
 
-        x = self.gcn_layer(x)
+        x = self.first_gcn_layer(x)
+
+        for next_gcn_layer in self.next_gcn_layers:
+            x = next_gcn_layer(x)
+
         x = torch.flatten(x, start_dim=1)
 
         if self.embedding_layer != 'first':

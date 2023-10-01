@@ -22,5 +22,7 @@
   "distance": "heur_dist",
   "k": 3,
   "gc_early_stopping": 30,
-  "nc_early_stopping": 30
+  "nc_early_stopping": 30,
+  "gc_epochs": 600,
+  "nc_epochs": 600
 }

@@ -142,6 +142,10 @@ class AbstractNN(nn.Module, AbstractModel):
     ):
         assert metric in ["auc", "accuracy"]
 
+        if early_stopping > 0 and val_loader is None:
+            print("Early stopping is off because val_loader is None")
+            early_stopping = -1
+
         self.train()
         train_losses, val_losses = [], []
         train_aucs, val_aucs = [], []
@@ -193,33 +197,6 @@ class AbstractNN(nn.Module, AbstractModel):
             t_per_train_epoch.append(time.time() - t_train)
             total_train_loss = total_train_loss / (len(train_loader.dataset) if isinstance(train_loader, DataLoader) else train_loader[0][1].shape[0])
 
-            t_val = time.time()
-
-            with torch.no_grad():
-                total_val_loss = 0
-
-                for b_num_val, data in enumerate(val_loader):
-                    input_data, labels = self._transform_input(data)
-                    output = self(*input_data)
-
-                    loss = self._eval_loss(
-                        output,
-                        labels,
-                        criterion,
-                        n_classes=self.get_num_classes(),
-                    )
-
-                    total_val_loss += loss.item() * (
-                        input_data[0].size(0)
-                        / (1 if criterion.reduction == "sum" else input_data[0].size(0))
-                    )
-
-            t_per_val_epoch.append(time.time() - t_val)
-
-            total_val_loss = total_val_loss / (len(val_loader.dataset) if isinstance(val_loader, DataLoader) else val_loader[0][1].shape[0])
-
-            t_auc = time.time()
-
             train_auc = self.evaluate(
                 loader=train_loader,
                 metric=metric,
@@ -227,27 +204,54 @@ class AbstractNN(nn.Module, AbstractModel):
                 to_numpy=False
             )
 
-            val_auc = self.evaluate(
-                loader=val_loader, metric=metric, labels_from_loader=labels_from_loader, to_numpy=False
-            )
+            if val_loader is not None:
+                t_val = time.time()
 
-            t_per_auc_epoch.append(time.time() - t_auc)
+                with torch.no_grad():
+                    total_val_loss = 0
 
-            train_losses.append(total_train_loss)
-            val_losses.append(total_val_loss)
-            train_aucs.append(train_auc)
-            val_aucs.append(val_auc)
+                    for b_num_val, data in enumerate(val_loader):
+                        input_data, labels = self._transform_input(data)
+                        output = self(*input_data)
+
+                        loss = self._eval_loss(
+                            output,
+                            labels,
+                            criterion,
+                            n_classes=self.get_num_classes(),
+                        )
+
+                        total_val_loss += loss.item() * (
+                            input_data[0].size(0)
+                            / (1 if criterion.reduction == "sum" else input_data[0].size(0))
+                        )
+
+                t_per_val_epoch.append(time.time() - t_val)
+
+                total_val_loss = total_val_loss / (len(val_loader.dataset) if isinstance(val_loader, DataLoader) else val_loader[0][1].shape[0])
+
+                val_auc = self.evaluate(
+                    loader=val_loader, metric=metric, labels_from_loader=labels_from_loader, to_numpy=False
+                )
+
+                val_losses.append(total_val_loss)
+                val_aucs.append(val_auc)
+
 
             if verbose:
                 print(
                     f"Epoch {epoch}/{n_epochs}:\n"
                     f"\tTrain loss: {total_train_loss:.4f}\n"
-                    f"\tVal loss: {total_val_loss:.4f}\n"
-                    f"\tTrain AUC: {train_auc:.4f}\n"
-                    f"\tVal AUC: {val_auc:.4f}"
+                    f"\tTrain AUC: {train_auc:.4f}" + ('\n' if val_loader is None else "")
                 )
 
-            if early_stopping > 0:
+                if val_loader is not None:
+                    print(
+                        f"\tVal loss: {total_val_loss:.4f}\n"
+                        f"\tVal AUC: {val_auc:.4f}\n"
+                    )
+
+            if early_stopping > 0 and val_loader is not None:
                 if val_auc > max_val_auc:
                     max_val_auc = val_auc
                     c = 0
@@ -273,7 +277,7 @@ class AbstractNN(nn.Module, AbstractModel):
 
         results_cache["learning_epochs"] = epoch
         results_cache["Train AUC"] = train_auc
-        results_cache["Val AUC"] = val_auc
+        results_cache["Val AUC"] = None if val_loader is None else val_auc
 
         if test_loader is not None and labels_from_loader(test_loader) is not None:
             test_auc = self.evaluate(
@@ -345,11 +349,12 @@ class AbstractNN(nn.Module, AbstractModel):
     ):
         given_test_y = test_loader is not None and labels_from_loader(test_loader) is not None
 
-        train_labels = labels_from_loader(train_loader).view(-1, 1)
-        val_labels = labels_from_loader(val_loader).view(-1, 1)
-
+        train_labels = labels_from_loader(train_loader).view(-1, 1).long()
         final_output_train = self.predict(loader=train_loader, probs=True, **kwargs)
-        final_output_val = self.predict(loader=val_loader, probs=True, **kwargs)
+
+        if val_loader is not None:
+            val_labels = labels_from_loader(val_loader).view(-1, 1)
+            final_output_val = self.predict(loader=val_loader, probs=True, **kwargs)
 
         if given_test_y:
             test_labels = labels_from_loader(test_loader).view(-1, 1)
@@ -369,19 +374,23 @@ class AbstractNN(nn.Module, AbstractModel):
                 threshold=None,
             )
 
-            pos_output_val = nn.Sigmoid()(final_output_val[:, 1])
+            if val_loader is not None:
+                pos_output_val = nn.Sigmoid()(final_output_val[:, 1])
 
-            best_val_acc, *_ = find_best_metrics_bin(
-                pos_output_val,
-                val_labels,
-                threshold=best_acc_threshold,
-            )
+                best_val_acc, *_ = find_best_metrics_bin(
+                    pos_output_val,
+                    val_labels,
+                    threshold=best_acc_threshold,
+                )
 
-            _, best_val_f1, *_ = find_best_metrics_bin(
-                pos_output_val,
-                val_labels,
-                threshold=best_f1_threshold,
-            )
+                _, best_val_f1, *_ = find_best_metrics_bin(
+                    pos_output_val,
+                    val_labels,
+                    threshold=best_f1_threshold,
+                )
+
+            else:
+                best_val_acc = best_val_f1 = None
 
             if given_test_y:
                 pos_output_test = nn.Sigmoid()(final_output_test[:, 1])
@@ -417,7 +426,12 @@ class AbstractNN(nn.Module, AbstractModel):
             return cache
 
         train_acc, train_f1 = find_best_metrics_multi(final_output_train, train_labels)
-        val_acc, val_f1 = find_best_metrics_multi(final_output_val, val_labels)
+
+        if val_loader is not None:
+            val_acc, val_f1 = find_best_metrics_multi(final_output_val, val_labels)
+
+        else:
+            val_acc, val_f1 = None, None
 
         cache = {
             "Train Acc": train_acc,
@@ -445,9 +459,16 @@ class AbstractNN(nn.Module, AbstractModel):
         labels_from_loader: Callable = lambda loader: loader.dataset.gdp.Y,
         **kwargs
     ) -> float:
+
+        if loader is None:
+            return None
+
         self.eval()
         preds = self.predict(loader, probs=True, **kwargs)
-        labels = labels_from_loader(loader).view(-1, 1)
+        labels = labels_from_loader(loader).view(-1, 1).long()
+
+        if labels is None:
+            return None
 
         labels_ = torch.zeros_like(preds)
         labels_[range(labels.shape[0]), labels[:, 0]] = 1

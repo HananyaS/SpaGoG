@@ -8,7 +8,7 @@ SpaGoG.egg-info/requires.txt
 SpaGoG.egg-info/top_level.txt
 spagog/__init__.py
 spagog/experiments.py
-spagog/main.py
+spagog/gog_model.py
 spagog/data/__init__.py
 spagog/data/load_data.py
 spagog/datasets/__init__.py

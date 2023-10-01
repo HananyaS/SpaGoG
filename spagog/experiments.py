@@ -22,6 +22,8 @@ def run_gc(
     evaluate_metrics: bool = True,
     probs: bool = False,
     to_numpy: bool = True,
+    f2m: bool = False,
+    n_gcn_layers: int = 1,
 ):
     graphs_dataset, *_ = GraphsDataset.from_tab(
         tab_data=tab_dataset,
@@ -31,6 +33,7 @@ def run_gc(
             "k": params.get("k", 3),
         },
         calc_intra_edges=True,
+        f2m=f2m
     )
 
     train_loader = graphs_dataset.get_train_data(as_loader=True, batch_size=params["batch_size"])
@@ -41,7 +44,6 @@ def run_gc(
     # test_loader = graphs_dataset.test.to_loader(batch_size=params["batch_size"])
 
     RECEIVED_PARAMS = {
-
         "preweight": params["preweight"],
         "layer_1": params["layer_1"],
         "layer_2": params["layer_2"],
@@ -54,6 +56,7 @@ def run_gc(
         RECEIVED_PARAMS=RECEIVED_PARAMS,
         init_weights=params.get("init", "xavier_normal"),
         embedding_layer="first",
+        n_gcn_layers=n_gcn_layers,
     )
 
     early_stopping = params.get("early_stopping", 30)
@@ -64,7 +67,7 @@ def run_gc(
         test_loader=test_loader,
         lr=params.get("lr", 0.01),
         early_stopping=early_stopping,
-        n_epochs=600,
+        n_epochs=params.get("epochs", 600),
         verbose=verbose,
         weight_decay=params.get("weight_decay", 0.001),
         dataset_name=tab_dataset.name,
@@ -91,6 +94,9 @@ def run_gnc(
     evaluate_metrics: bool = True,
     probs: bool = False,
     to_numpy: bool = True,
+    f2m: bool = False,
+    find_beta: bool = False,
+    n_gcn_layers: int = 1,
 ):
     graphs_dataset, inter_samples_edges, masks = GraphsDataset.from_tab(
         tab_data=tab_dataset,
@@ -100,6 +106,7 @@ def run_gnc(
         },
         inter_sample_edges=inter_sample_edges,
         calc_intra_edges=True,
+        f2m=f2m
     )
 
     train_mask, val_mask, test_mask = masks
@@ -133,6 +140,7 @@ def run_gnc(
             RECEIVED_PARAMS=RECEIVED_PARAMS,
             init_weights=gc_params.get("init", "xavier_normal"),
             embedding_layer=params["embedding_layer"],  # embedding_layer,
+            n_gcn_layers=n_gcn_layers,
         )
 
         if "gc_early_stopping" in gc_params.keys():
@@ -146,7 +154,7 @@ def run_gnc(
             test_loader=test_loader,
             lr=gc_params.get("lr", 0.01),
             early_stopping=gc_early_stopping,
-            n_epochs=600,
+            n_epochs=gc_params.get("epochs", 600),
             verbose=verbose,
             weight_decay=gc_params.get("weight_decay", 0.001),
             dataset_name=tab_dataset.name,
@@ -166,6 +174,7 @@ def run_gnc(
                 "dropout": params["gc_dropout"],
             },
             "embedding_layer": params["embedding_layer"],  # embedding_layer,
+            "n_gcn_layers": n_gcn_layers,
         },
         nc_kwargs={
             "h_layers": nc_h_layers,
@@ -183,7 +192,7 @@ def run_gnc(
         train_mask,
         val_mask,
         test_mask,
-        n_epochs=100,
+        n_epochs=params.get("epochs", 100),
         gc_lr=params["gc_lr"],
         nc_lr=params["nc_lr"],
         gc_weight_decay=params["gc_weight_decay"],
@@ -193,6 +202,7 @@ def run_gnc(
         early_stopping=early_stopping,
         verbose=verbose,
         clf_from=params["clf_from"],  # clf_from
+        find_beta=find_beta,
     )
 
     y_test = model.predict(
@@ -230,6 +240,8 @@ def run_gc_nc(
     evaluate_metrics: bool = True,
     probs: bool = False,
     to_numpy: bool = True,
+    f2m: bool = False,
+    n_gcn_layers: int = 1,
 ):
     graphs_dataset, inter_sample_edges, masks = GraphsDataset.from_tab(
         tab_data=tab_dataset,
@@ -239,6 +251,7 @@ def run_gc_nc(
         },
         inter_sample_edges=inter_sample_edges,
         calc_intra_edges=True,
+        f2m=f2m
     )
 
     train_graphs_loader = graphs_dataset.train.to_loader(
@@ -261,6 +274,7 @@ def run_gc_nc(
         RECEIVED_PARAMS=GC_RECEIVED_PARAMS,
         init_weights=params.get("init", "xavier_normal"),
         embedding_layer=params["embedding_layer"],  # embedding_layer
+        n_gcn_layers=n_gcn_layers,
     )
 
     gc_early_stopping = params.get("gc_early_stopping", 30)
@@ -271,7 +285,7 @@ def run_gc_nc(
         test_loader=test_graphs_loader,
         lr=params["gc_lr"],
         early_stopping=gc_early_stopping,
-        n_epochs=600,
+        n_epochs=params.get("gc_epochs", 600),
         verbose=verbose,
         weight_decay=params.get("gc_weight_decay", 0),
         dataset_name=tab_dataset.name,
@@ -381,7 +395,7 @@ def run_gc_nc(
         val_loader=val_graph,
         test_loader=test_graph,
         lr=params["nc_lr"],
-        n_epochs=600,
+        n_epochs=params.get("nc_epochs", 600),
         early_stopping=nc_early_stopping,
         weight_decay=params.get("nc_weight_decay", 0),
         verbose=verbose,

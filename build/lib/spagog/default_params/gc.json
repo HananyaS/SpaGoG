@@ -10,5 +10,6 @@
   "layer_1": 10,
   "layer_2": 7,
   "dropout": 0,
-  "early_stopping": 30
+  "early_stopping": 30,
+  "epochs": 600
 }

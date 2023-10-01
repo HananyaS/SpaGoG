@@ -7,7 +7,13 @@ import torch
 import pandas as pd
 import numpy as np
 
-from .experiments import run_gc, run_gnc, run_gc_nc, get_default_params_file, get_tab_data
+from .experiments import (
+    run_gc,
+    run_gnc,
+    run_gc_nc,
+    get_default_params_file,
+    get_tab_data,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -16,24 +22,33 @@ os.chdir(PROJECT_DIR)
 
 
 def gog_model(
-        model: str,
-        train_X: pd.DataFrame,
-        train_Y: pd.DataFrame,
-        test_X: pd.DataFrame,
-        test_Y: pd.DataFrame = None,
-        val_X: pd.DataFrame = None,
-        val_Y: pd.DataFrame = None,
-        evaluate_metrics: bool = True,
-        dataset_name: str = "",
-        feature_selection: int = 100,
-        edges: pd.DataFrame = None,
-        probs: bool = False,
-        to_numpy: bool = False,
-        verbosity: int = 0,
-        **spec_params
+    model: str,
+    train_X: pd.DataFrame,
+    train_Y: pd.DataFrame,
+    test_X: pd.DataFrame,
+    test_Y: pd.DataFrame = None,
+    val_X: pd.DataFrame = None,
+    val_Y: pd.DataFrame = None,
+    evaluate_metrics: bool = True,
+    dataset_name: str = "",
+    feature_selection: int = 100,
+    edges: pd.DataFrame = None,
+    probs: bool = False,
+    to_numpy: bool = False,
+    verbosity: int = 0,
+    f2m: bool = False,
+    find_beta: bool = False,
+    n_gcn_layers: int = 1,
+    **spec_params,
 ):
-    assert not evaluate_metrics or test_Y is not None, "Please provide test_Y to evaluate metrics"
-    assert model in ["gc", "gnc", "gc+nc"], "Please provide a valid model {gc, gnc, gc+nc}}"
+    assert (
+        not evaluate_metrics or test_Y is not None
+    ), "Please provide test_Y to evaluate metrics"
+    assert model in [
+        "gc",
+        "gnc",
+        "gc+nc",
+    ], "Please provide a valid model {gc, gnc, gc+nc}}"
     assert verbosity in [0, 1, 2], "Please provide a valid verbosity level {0, 1, 2}"
 
     if verbosity > 0:
@@ -60,10 +75,17 @@ def gog_model(
         elif "gc_params" in params.keys() and k in params["gc_params"].keys():
             params["gc_params"][k] = v
 
-    assert "embedding_layer" not in params.keys() or params["embedding_layer"] in ['one_before_last', 'first', 'mid']
-    assert "gc_params" not in params.keys() or "embedding_layer" not in params["gc_params"].keys() or \
-           params["gc_params"]["embedding_layer"] in ['one_before_last', 'first', 'mid']
-    assert "clf_from" not in params.keys() or params["clf_from"] in ['gc', 'nc']
+    assert "embedding_layer" not in params.keys() or params["embedding_layer"] in [
+        "one_before_last",
+        "first",
+        "mid",
+    ]
+    assert (
+        "gc_params" not in params.keys()
+        or "embedding_layer" not in params["gc_params"].keys()
+        or params["gc_params"]["embedding_layer"] in ["one_before_last", "first", "mid"]
+    )
+    assert "clf_from" not in params.keys() or params["clf_from"] in ["gc", "nc"]
 
     tab_dataset = get_tab_data(
         train_X=train_X,
@@ -86,62 +108,65 @@ def gog_model(
     else:
         run_func = run_gc_nc
 
-    y_test, res_cache = run_func(
-        tab_dataset,
-        params,
-        inter_sample_edges=inter_sample_edges,
-        verbose=verbosity == 2,
-        evaluate_metrics=evaluate_metrics,
-        probs=probs,
-        to_numpy=to_numpy,
-    )
+    kwargs = {
+        "tab_dataset": tab_dataset,
+        "params": params,
+        "inter_sample_edges": inter_sample_edges,
+        "verbose": verbosity == 2,
+        "evaluate_metrics": evaluate_metrics,
+        "probs": probs,
+        "to_numpy": to_numpy,
+        "f2m": f2m,
+        "n_gcn_layers": n_gcn_layers,
+    }
+
+    if model == "gnc":
+        kwargs["find_beta"] = find_beta
+
+    y_test, res_cache = run_func(**kwargs)
 
     if verbosity == 2:
         print()
 
     if verbosity > 0:
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print(f"Results on {dataset_name.upper() if dataset_name != '' else 'dataset'} with {model.upper()}:")
+        print(
+            f"Results on {dataset_name.upper() if dataset_name != '' else 'dataset'} with {model.upper()}:"
+        )
         print(f"\tN epochs:\t{res_cache['learning_epochs']}")
         print("\tAccuracy:")
         print(
             f"\t\tThreshold:\t{res_cache['Acc Threshold']}\n"
             f"\t\tTrain:\t{res_cache['Train Acc']}\n"
-            f"\t\tVal:\t{res_cache['Val Acc']}"
+            f"\t\tVal:\t{res_cache.get('Val Acc')}"
         )
 
         if evaluate_metrics:
-            print(
-                f"\t\tTest:\t{res_cache['Test Acc']}"
-            )
+            print(f"\t\tTest:\t{res_cache['Test Acc']}")
 
         print("\tF1:")
         print(
             f"\t\tThreshold:\t{res_cache['F1 Threshold']}\n"
             f"\t\tTrain:\t{res_cache['Train F1']}\n"
-            f"\t\tVal:\t{res_cache['Val F1']}"
+            f"\t\tVal:\t{res_cache.get('Val F1')}"
         )
 
         if evaluate_metrics:
-            print(
-                f"\t\tTest:\t{res_cache['Test F1']}"
-            )
+            print(f"\t\tTest:\t{res_cache['Test F1']}")
 
         print("\tAUC:")
         print(
             f"\t\tTrain:\t{res_cache['Train AUC']}\n"
-            f"\t\tVal:\t{res_cache['Val AUC']}"
+            f"\t\tVal:\t{res_cache.get('Val AUC')}"
         )
 
         if evaluate_metrics:
-            print(
-                f"\t\tTest:\t{res_cache['Test AUC']}"
-            )
+            print(f"\t\tTest:\t{res_cache['Test AUC']}")
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     if verbosity > 0:
-        _et  = time.time()
+        _et = time.time()
         diff = _et - _st
 
         _sec = np.round(diff % 60, 2)
@@ -171,6 +196,14 @@ if __name__ == "__main__":
     val_Y = val_all[target_col]
     val_X = val_all.drop(target_col, axis=1)
 
-    results = gog_model(train_X=train_X, train_Y=train_Y, test_X=test_X, test_Y=test_Y, val_X=val_X,
-                        val_Y=val_Y, model="gc", evaluate_metrics=test_Y is not None,
-                        verbosity=1)
+    results = gog_model(
+        train_X=train_X,
+        train_Y=train_Y,
+        test_X=test_X,
+        test_Y=test_Y,
+        val_X=val_X,
+        val_Y=val_Y,
+        model="gc",
+        evaluate_metrics=test_Y is not None,
+        verbosity=1,
+    )

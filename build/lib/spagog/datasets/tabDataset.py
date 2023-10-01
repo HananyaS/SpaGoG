@@ -17,13 +17,13 @@ class TabDataset:
     _input_types = Union[torch.Tensor, np.ndarray]
 
     def __init__(
-            self,
-            name: str,
-            train: TabDataPair,
-            test: TabDataPair = None,
-            val: TabDataPair = None,
-            normalize: bool = False,
-            feature_selection: int = None,
+        self,
+        name: str,
+        train: TabDataPair,
+        test: TabDataPair = None,
+        val: TabDataPair = None,
+        normalize: bool = False,
+        feature_selection: int = None,
     ):
         self.name = name
         self.normalized = False
@@ -34,21 +34,25 @@ class TabDataset:
 
         if self.test_exists:
             assert (
-                    test.get_num_features() == train.get_num_features()
+                test.get_num_features() == train.get_num_features()
             ), "Test doesn't have the same number of features as in train"
             self.test = test
             self.test.denormalize(inplace=True)
 
         if self.val_exists:
             assert (
-                    val.get_num_features() == train.get_num_features()
+                val.get_num_features() == train.get_num_features()
             ), "Validation doesn't have the same number of features as in train"
             self.val = val
             self.val.denormalize(inplace=True)
 
         unique_vals = self.remove_feats()
 
-        is_one_hot = lambda i: len(unique_vals[i]) == 2 and 0 in unique_vals[i] and 1 in unique_vals[i]
+        is_one_hot = (
+            lambda i: len(unique_vals[i]) == 2
+            and 0 in unique_vals[i]
+            and 1 in unique_vals[i]
+        )
         one_hot_feats = list(filter(is_one_hot, range(len(unique_vals))))
 
         self.one_hot_feats = one_hot_feats
@@ -57,8 +61,8 @@ class TabDataset:
             self.zscore()
 
         if (
-                feature_selection is not None
-                and 1 < int(feature_selection) < self.train.get_num_features()
+            feature_selection is not None
+            and 1 < int(feature_selection) < self.train.get_num_features()
         ):
             print(f"Selecting best {int(feature_selection)} features!")
             X_train_np = self.train.X.numpy()
@@ -71,8 +75,8 @@ class TabDataset:
 
             mi_scores = mutual_info_classif(X_train_np, Y_train_np)
             idx2remain = np.argpartition(mi_scores, kth=-int(feature_selection))[
-                         -int(feature_selection):
-                         ]
+                -int(feature_selection) :
+            ]
 
             self.train.X = self.train.X[:, idx2remain]
             self.val.X = self.val.X[:, idx2remain]
@@ -88,18 +92,18 @@ class TabDataset:
 
     @classmethod
     def from_attributes(
-            cls,
-            name: str,
-            train_X: _input_types,
-            train_Y: _input_types = None,
-            test_X: _input_types = None,
-            test_Y: _input_types = None,
-            val_X: _input_types = None,
-            val_Y: _input_types = None,
-            shuffle: bool = False,
-            add_existence_cols: bool = False,
-            normalize: bool = True,
-            **kwargs,
+        cls,
+        name: str,
+        train_X: _input_types,
+        train_Y: _input_types = None,
+        test_X: _input_types = None,
+        test_Y: _input_types = None,
+        val_X: _input_types = None,
+        val_Y: _input_types = None,
+        shuffle: bool = False,
+        add_existence_cols: bool = False,
+        normalize: bool = True,
+        **kwargs,
     ):
         assert test_X is not None or test_Y is None
         assert val_X is not None or val_Y is None
@@ -183,21 +187,36 @@ class TabDataset:
 
         unique_vals = list(map(find_unique_vals, self.train.X.T))
 
-        feats2remain = list(filter(lambda i: len(unique_vals[i]) > 1, range(len(unique_vals))))
+        feats2remain = list(
+            filter(lambda i: len(unique_vals[i]) > 1, range(len(unique_vals)))
+        )
 
         self.train.X = self.train.X[:, feats2remain]
-        self.test.X = self.test.X[:, feats2remain]
-        self.val.X = self.val.X[:, feats2remain]
+
+        if self.test_exists:
+            self.test.X = self.test.X[:, feats2remain]
+        if self.val_exists:
+            self.val.X = self.val.X[:, feats2remain]
+
         unique_vals = [unique_vals[i] for i in feats2remain]
 
         if self.train.normalized:
-            self.train.norm_params = self.train.norm_params[0][feats2remain], self.train.norm_params[1][feats2remain]
+            self.train.norm_params = (
+                self.train.norm_params[0][feats2remain],
+                self.train.norm_params[1][feats2remain],
+            )
 
-        if self.test.normalized:
-            self.test.norm_params = self.test.norm_params[0][feats2remain], self.test.norm_params[1][feats2remain]
+        if self.test_exists and self.test.normalized:
+            self.test.norm_params = (
+                self.test.norm_params[0][feats2remain],
+                self.test.norm_params[1][feats2remain],
+            )
 
-        if self.val.normalized:
-            self.val.norm_params = self.val.norm_params[0][feats2remain], self.val.norm_params[1][feats2remain]
+        if self.val_exists and self.val.normalized:
+            self.val.norm_params = (
+                self.val.norm_params[0][feats2remain],
+                self.val.norm_params[1][feats2remain],
+            )
 
         return unique_vals
 
@@ -219,7 +238,9 @@ class TabDataset:
         if self.train.normalized:
             self.train.denormalize(inplace=True)
 
-        _, mu, sigma = self.train.zscore(inplace=True, return_params=True, one_hot_features=self.one_hot_feats)
+        _, mu, sigma = self.train.zscore(
+            inplace=True, return_params=True, one_hot_features=self.one_hot_feats
+        )
 
         mu[self.one_hot_feats] = 0
         sigma[self.one_hot_feats] = 1
@@ -308,33 +329,42 @@ class TabDataset:
 
     @classmethod
     def load(
-            cls,
-            train_X: pd.DataFrame = None,
-            train_Y: pd.DataFrame = None,
-            val_X: pd.DataFrame = None,
-            val_Y: pd.DataFrame = None,
-            test_X: pd.DataFrame = None,
-            test_Y: pd.DataFrame = None,
-            name: str = "",
-            **kwargs,
+        cls,
+        train_X: pd.DataFrame = None,
+        train_Y: pd.DataFrame = None,
+        val_X: pd.DataFrame = None,
+        val_Y: pd.DataFrame = None,
+        test_X: pd.DataFrame = None,
+        test_Y: pd.DataFrame = None,
+        split_if_no_val: bool = False,
+        name: str = "",
+        **kwargs,
     ):
         if train_X is not None and train_Y is not None and test_X is not None:
-            if val_X is None or val_Y is None:
-                train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2, random_state=42)
+            if (val_X is None or val_Y is None) and split_if_no_val:
+                train_X, val_X, train_Y, val_Y = train_test_split(
+                    train_X, train_Y, test_size=0.2, random_state=42
+                )
 
             train_X = train_X.reset_index(drop=True)
             train_Y = train_Y.reset_index(drop=True)
-            val_X = val_X.reset_index(drop=True)
-            val_Y = val_Y.reset_index(drop=True)
-
             train_X = train_X.values
             train_Y = train_Y.values
-            val_X = val_X.values
-            val_Y = val_Y.values
             test_X = test_X.values
 
             if test_Y is not None:
                 test_Y = test_Y.values
+
+            if val_X is not None and val_Y is not None:
+                val_X = val_X.reset_index(drop=True)
+                val_Y = val_Y.reset_index(drop=True)
+
+                val_X = val_X.values
+                val_Y = val_Y.values
+
+            else:
+                val_X = None
+                val_Y = None
 
             return cls.from_attributes(
                 train_X=train_X,
@@ -355,21 +385,32 @@ class TabDataset:
         next_idx = all_data_X.shape[0]
 
         if self.val_exists:
-            val_data_X = self.get_val_data(as_loader=False).X
-            all_data_X = torch.cat((all_data_X, val_data_X))
-            all_data_Y = torch.cat((all_data_Y, self.get_val_data(as_loader=False).Y))
-            val_mask = list(range(next_idx, next_idx + val_data_X.shape[0]))
+            val_data = self.get_val_data(as_loader=False)
+            all_data_X = torch.cat((all_data_X, val_data.X))
+            
+            if val_data.Y is not None:
+                val_data_Y = val_data.Y
+            else:
+                val_data_Y = torch.zeros(val_data.X.shape[0]) * np.nan
+            
+            all_data_Y = torch.cat((all_data_Y, val_data_Y))
+            val_mask = list(range(next_idx, next_idx + val_data.X.shape[0]))
             next_idx = all_data_X.shape[0]
 
         else:
             val_mask = None
 
         if self.test_exists:
-            test_data_X = self.get_test_data(as_loader=False).X
-            all_data_X = torch.cat((all_data_X, test_data_X))
-            if self.test.Y is not None:  # added if
-                all_data_Y = torch.cat((all_data_Y, self.get_test_data(as_loader=False).Y))
-            test_mask = list(range(next_idx, next_idx + test_data_X.shape[0]))
+            test_data = self.get_test_data(as_loader=False)
+            all_data_X = torch.cat((all_data_X, test_data.X))
+            
+            if test_data.Y is not None:
+                test_data_Y =test_data.Y
+            else:
+                test_data_Y = torch.zeros(test_data.X.shape[0]) * np.nan
+                
+            all_data_Y = torch.cat((all_data_Y, test_data_Y))
+            test_mask = list(range(next_idx, next_idx + test_data.X.shape[0]))
 
         else:
             test_mask = None

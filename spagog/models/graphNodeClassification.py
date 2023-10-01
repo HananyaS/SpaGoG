@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 import torch
@@ -169,6 +170,7 @@ class GraphNodeClassification(nn.Module, AbstractModel):
         gc_weight_decay: float = 0,
         nc_lr: float = 0.001,
         nc_weight_decay: float = 0,
+        find_beta: bool = True,
     ):
 
         given_test_y = graphs_dataset.test.Y is not None
@@ -394,56 +396,104 @@ class GraphNodeClassification(nn.Module, AbstractModel):
                 test_mask,
             )
 
-        if clf_from == "nc":
-            final_output_train = nn.Softmax(dim=1)(final_output_train)
+        if find_beta:
+            best_beta, best_loss = -1, np.inf
 
-            if graphs_val_loader is not None:
-                final_output_val = nn.Softmax(dim=1)(final_output_val)
+            for beta in tqdm.tqdm(
+                np.array(range(0, 101)) / 100, desc="Searching for best beta"
+            ):
+                output = beta * final_output_train + (1 - beta) * gc_output_train
+                train_loss = nn.CrossEntropyLoss()(
+                    output, train_labels.long().view(-1)
+                ).item()
 
-            if given_test_y:
-                final_output_test = nn.Softmax(dim=1)(final_output_test)
+                if train_loss < best_loss:
+                    best_loss = train_loss
+                    best_beta = beta
+
+            if verbose:
+                print(f"Best beta is {best_beta} with loss of {best_loss} on training")
 
         else:
-            gc_output_train = nn.Softmax(dim=1)(gc_output_train)
+            best_beta = int(clf_from == "nc")
 
-            if graphs_val_loader is not None:
-                gc_output_val = nn.Softmax(dim=1)(gc_output_val)
-
-            if given_test_y:
-                gc_output_test = nn.Softmax(dim=1)(gc_output_test)
-
-        train_auc = roc_auc_score(
-            one_hot(train_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
-            (final_output_train if clf_from == "nc" else gc_output_train)
-            .cpu()
-            .detach()
-            .numpy(),
+        mixed_output_train = (
+            best_beta * final_output_train + (1 - best_beta) * gc_output_train
         )
 
         if graphs_val_loader is not None:
-            val_auc = roc_auc_score(
-                one_hot(val_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
-                (final_output_val if clf_from == "nc" else gc_output_val)
-                .cpu()
-                .detach()
-                .numpy(),
+            mixed_output_val = (
+                best_beta * final_output_val + (1 - best_beta) * gc_output_val
             )
 
         if given_test_y:
-            test_auc = roc_auc_score(
-                one_hot(test_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
-                (final_output_test if clf_from == "nc" else gc_output_test)
-                .cpu()
-                .detach()
-                .numpy(),
+            mixed_output_test = (
+                best_beta * final_output_test + (1 - best_beta) * gc_output_test
             )
 
-        if self.bin:
-            if clf_from == "nc":
-                pos_output_train = final_output_train[:, 1]
+        try:
+            train_auc = roc_auc_score(
+                one_hot(train_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
+                mixed_output_train.cpu().detach().numpy(),
+            )
 
-            else:
-                pos_output_train = gc_output_train[:, 1]
+        except:
+            train_auc = None
+
+        try:
+            if graphs_val_loader is not None:
+                val_auc = roc_auc_score(
+                    one_hot(val_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
+                    (final_output_val if clf_from == "nc" else gc_output_val)
+                    .cpu()
+                    .detach()
+                    .numpy(),
+                )
+
+        except:
+            val_auc = None
+
+        if given_test_y:
+            try:
+                test_auc = roc_auc_score(
+                    one_hot(test_labels.view(-1).long(), n_classes)
+                    .cpu()
+                    .detach()
+                    .numpy(),
+                    mixed_output_test.cpu().detach().numpy(),
+                )
+
+            except:
+                test_auc = None
+
+        # train_auc = roc_auc_score(
+        #     one_hot(train_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
+        #     (final_output_train if clf_from == "nc" else gc_output_train)
+        #     .cpu()
+        #     .detach()
+        #     .numpy(),
+        # )
+
+        # if graphs_val_loader is not None:
+        #     val_auc = roc_auc_score(
+        #         one_hot(val_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
+        #         (final_output_val if clf_from == "nc" else gc_output_val)
+        #         .cpu()
+        #         .detach()
+        #         .numpy(),
+        #     )
+
+        # if given_test_y:
+        #     test_auc = roc_auc_score(
+        #         one_hot(test_labels.view(-1).long(), n_classes).cpu().detach().numpy(),
+        #         (final_output_test if clf_from == "nc" else gc_output_test)
+        #         .cpu()
+        #         .detach()
+        #         .numpy(),
+        #     )
+
+        if self.bin:
+            pos_output_train = mixed_output_train[:, 1]
 
             (
                 best_train_acc,
@@ -457,11 +507,7 @@ class GraphNodeClassification(nn.Module, AbstractModel):
             )
 
             if graphs_val_loader is not None:
-                if clf_from == "nc":
-                    pos_output_val = final_output_val[:, 1]
-
-                else:
-                    pos_output_val = gc_output_val[:, 1]
+                pos_output_val = mixed_output_val[:, 1]
 
                 best_val_acc, *_ = find_best_metrics_bin(
                     pos_output_val,
@@ -479,10 +525,7 @@ class GraphNodeClassification(nn.Module, AbstractModel):
                 best_val_acc, best_val_f1 = None, None
 
             if given_test_y:
-                if clf_from == "nc":
-                    pos_output_test = final_output_test[:, 1]
-                else:
-                    pos_output_test = gc_output_test[:, 1]
+                pos_output_test = mixed_output_test[:, 1]
 
                 best_test_acc, *_ = find_best_metrics_bin(
                     pos_output_test,
@@ -497,40 +540,19 @@ class GraphNodeClassification(nn.Module, AbstractModel):
                 )
 
         else:
-            if clf_from == "nc":
-                best_train_acc, best_train_f1 = find_best_metrics_multi(
-                    final_output_train, train_labels
+            best_train_acc, best_train_f1 = find_best_metrics_multi(
+                mixed_output_train, train_labels
+            )
+
+            if graphs_val_loader is not None:
+                best_val_acc, best_val_f1 = find_best_metrics_multi(
+                    mixed_output_val, val_labels
                 )
 
-                if graphs_val_loader is not None:
-                    best_val_acc, best_val_f1 = find_best_metrics_multi(
-                        final_output_val, val_labels
-                    )
-
-                else:
-                    best_val_acc, best_val_f1 = None, None
-
-                if given_test_y:
-                    best_test_acc, best_test_f1 = find_best_metrics_multi(
-                        final_output_test, test_labels
-                    )
-
-            else:
-                best_train_acc, best_train_f1 = find_best_metrics_multi(
-                    gc_output_train, train_labels
+            if given_test_y:
+                best_test_acc, best_test_f1 = find_best_metrics_multi(
+                    mixed_output_test, test_labels
                 )
-
-                if graphs_val_loader is not None:
-                    best_val_acc, best_val_f1 = find_best_metrics_multi(
-                        gc_output_val, val_labels
-                    )
-                else:
-                    best_val_acc, best_val_f1 = None, None
-
-                if given_test_y:
-                    best_test_acc, best_test_f1 = find_best_metrics_multi(
-                        gc_output_test, test_labels
-                    )
 
             best_acc_threshold, best_f1_threshold = -1, -1
 
@@ -552,15 +574,21 @@ class GraphNodeClassification(nn.Module, AbstractModel):
 
         cache = {
             "Train Acc": best_train_acc,
-            "Val Acc": best_val_acc,
+            # "Val Acc": best_val_acc,
             "Train F1": best_train_f1,
-            "Val F1": best_val_f1,
+            # "Val F1": best_val_f1,
             "Train AUC": train_auc,
-            "Val AUC": val_auc,
+            # "Val AUC": val_auc,
             "Acc Threshold": best_acc_threshold,
             "F1 Threshold": best_f1_threshold,
             "learning_epochs": epoch,
         }
+
+        if graphs_val_loader is not None:
+            cache["Val Acc"] = best_val_acc
+            cache["Val F1"] = best_val_f1
+            cache["Val AUC"] = val_auc
+
 
         if given_test_y:
             cache["Test Acc"] = best_test_acc

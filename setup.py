@@ -4,7 +4,7 @@ from distutils.core import setup
 setup(
     name='SpaGoG',  # How you named your package folder (MyLib)
     packages=setuptools.find_packages(),  # Chose the same as "name"
-    version='0.22',  # Start with a small number and increase it with every change you make
+    version='0.25',  # Start with a small number and increase it with every change you make
     license='MIT',  # Chose a license from here: https://help.github.com/articles/licensing-a-repository
     description='Sparse data classification using Graph of Graphs',  # Give a short description about your library
     author='Shachar Hananya',  # Type in your name

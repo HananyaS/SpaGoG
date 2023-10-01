@@ -22,5 +22,6 @@
   "use_existence_cols": true,
   "distance": "heur_dist",
   "k": 3,
-  "early_stopping": 30
+  "early_stopping": 30,
+  "epochs": 100
 }

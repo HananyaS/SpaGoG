@@ -25,7 +25,8 @@ def tab2graphs(
         val_mask: list = None,
         test_mask: list = None,
         inter_sample_edges: torch.Tensor = None,
-        calc_intra_edges: bool = True
+        calc_intra_edges: bool = True,
+        f2m: bool = False,
 ):
     assert not include_edge_weights or edge_weights_method in ["corr", None]
     assert fill_data_method in ["gfp", "zeros"]
@@ -72,18 +73,34 @@ def tab2graphs(
     X_list = list(imputed_data_)
 
     if calc_intra_edges:
-        edge_list = list(
-            map(
-                lambda s: torch.from_numpy(
-                    lst_to_mat(
-                        np.array(list(combinations(np.where(s.cpu() == s.cpu())[0], r=2))),
-                        len(s),
-                        edge_weights,
-                    )
-                ),
-                list(tab_data_),
+        if f2m:
+            edge_list = (
+                torch.from_numpy(edge_weights)
+                .unsqueeze(0)
+                .repeat([tab_data_.shape[0], 1, 1])
             )
-        )
+
+            masks = torch.repeat_interleave(
+                ~torch.isnan(tab_data_).unsqueeze(-1), tab_data_.shape[1], dim=2
+            ).long()
+            edge_list = edge_list * masks
+            edge_list = list(edge_list)
+
+        else:
+            edge_list = list(
+                map(
+                    lambda s: torch.from_numpy(
+                        lst_to_mat(
+                            np.array(
+                                list(combinations(np.where(s.cpu() == s.cpu())[0], r=2))
+                            ),
+                            len(s),
+                            edge_weights,
+                        )
+                    ),
+                    list(tab_data_),
+                )
+            )
 
     else:
         edge_list = None
